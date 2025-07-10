@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>オンラインじゃんけんRPG</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #f0f0ff;
+      text-align: center;
+      margin: 0;
+      padding: 20px;
+    }
+
+    #game {
+      display: none;
+    }
+
+    .characters {
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      margin-top: 20px;
+    }
+
+    .character {
+      width: 150px;
+      transition: transform 0.2s;
+    }
+
+    .shake {
+      animation: shake 0.4s;
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translate(0, 0); }
+      25% { transform: translate(-10px, 0); }
+      50% { transform: translate(10px, 0); }
+      75% { transform: translate(-5px, 0); }
+    }
+
+    .buttons {
+      margin-top: 20px;
+    }
+
+    .status {
+      margin-top: 10px;
+    }
+
+    .log {
+      margin-top: 10px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+<h1>オンラインじゃんけんRPG</h1>
+
+<div id="lobby">
+  <p>ルームIDを入力してください</p>
+  <input type="text" id="roomInput" placeholder="例: abc123" />
+  <button onclick="joinRoom()">部屋に入る</button>
+</div>
+
+<div id="game">
+  <h2 id="playerLabel"></h2>
+
+  <div class="characters">
+ <img src="C:\Users\user\OneDrive\Desktop\daily\3rtv.png" id="character1" class="character" />
+<img src="C:\Users\user\OneDrive\Desktop\daily\984552 (1).png" id="character2" class="character" />
+
+  </div>
+
+  <div class="buttons">
+    <button onclick="sendMove('グー')">✊ グー</button>
+    <button onclick="sendMove('チョキ')">✌ チョキ</button>
+    <button onclick="sendMove('パー')">🖐 パー</button>
+  </div>
+
+  <div class="status" id="status">じゃんけんを出してください！</div>
+  <div class="log" id="log"></div>
+</div>
+
+<script>
+  const ws = new WebSocket("ws://localhost:3000");
+
+  let playerNumber = null;
+  let roomID = "";
+  let myMove = null;
+  let opponentMove = null;
+
+  function joinRoom() {
+    roomID = document.getElementById("roomInput").value;
+    ws.send(JSON.stringify({ type: "join", room: roomID }));
+    document.getElementById("lobby").style.display = "none";
+    document.getElementById("status").textContent = "待機中...";
+  }
+
+  ws.onmessage = function (event) {
+    const data = JSON.parse(event.data);
+
+    if (data.type === "start") {
+      playerNumber = data.player;
+      document.getElementById("playerLabel").textContent = `あなたは プレイヤー${playerNumber}`;
+      document.getElementById("game").style.display = "block";
+      document.getElementById("status").textContent = "じゃんけんを出してください！";
+    }
+
+    if (data.type === "opponentMove") {
+      opponentMove = data.hand;
+      if (myMove) {
+        judge();
+      }
+    }
+  };
+
+  function sendMove(hand) {
+    if (!playerNumber) return;
+    myMove = hand;
+    ws.send(JSON.stringify({ type: "move", room: roomID, hand }));
+    document.getElementById("status").textContent = "相手を待っています...";
+  }
+
+  function judge() {
+    let result = "";
+    const c1 = document.getElementById("character1");
+    const c2 = document.getElementById("character2");
+
+    if (myMove === opponentMove) {
+      result = "あいこ！";
+    } else {
+      const win =
+        (myMove === "グー" && opponentMove === "チョキ") ||
+        (myMove === "チョキ" && opponentMove === "パー") ||
+        (myMove === "パー" && opponentMove === "グー");
+
+      if ((playerNumber === 1 && win) || (playerNumber === 2 && !win)) {
+        result = "勝ち！";
+        (playerNumber === 1 ? c2 : c1).classList.add("shake");
+      } else {
+        result = "負け…";
+        (playerNumber === 1 ? c1 : c2).classList.add("shake");
+      }
+    }
+
+    document.getElementById("log").textContent = `あなた: ${myMove} / 相手: ${opponentMove} → ${result}`;
+    myMove = null;
+    opponentMove = null;
+
+    // 揺れ解除
+    setTimeout(() => {
+      document.getElementById("character1").classList.remove("shake");
+      document.getElementById("character2").classList.remove("shake");
+    }, 500);
+  }
+</script>
+
+</body>
+</html>
