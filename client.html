@@ -12,45 +12,42 @@
       margin: 0;
       padding: 20px;
     }
-
     #game {
       display: none;
     }
-
     .characters {
       display: flex;
       justify-content: space-around;
       align-items: center;
       margin-top: 20px;
     }
-
     .character {
       width: 150px;
       transition: transform 0.2s;
     }
-
     .shake {
       animation: shake 0.4s;
     }
-
     @keyframes shake {
       0%, 100% { transform: translate(0, 0); }
       25% { transform: translate(-10px, 0); }
       50% { transform: translate(10px, 0); }
       75% { transform: translate(-5px, 0); }
     }
-
     .buttons {
       margin-top: 20px;
     }
-
     .status {
       margin-top: 10px;
     }
-
     .log {
       margin-top: 10px;
       font-weight: bold;
+    }
+    .stats {
+      display: flex;
+      justify-content: space-around;
+      margin-top: 10px;
     }
   </style>
 </head>
@@ -78,6 +75,11 @@
     <button onclick="sendMove('パー')">🖐 パー</button>
   </div>
 
+  <div class="stats">
+    <div id="stats1"></div>
+    <div id="stats2"></div>
+  </div>
+
   <div class="status" id="status">じゃんけんを出してください！</div>
   <div class="log" id="log"></div>
 </div>
@@ -89,6 +91,16 @@
   let roomID = "";
   let myMove = null;
   let opponentMove = null;
+
+  const playerStats = {
+    1: { hp: 10, power: 0, will: 0, atk: 3 },
+    2: { hp: 10, power: 0, will: 0, atk: 3 }
+  };
+
+  function updateStats() {
+    document.getElementById("stats1").textContent = `P1 - 体力: ${playerStats[1].hp} 決定力: ${playerStats[1].power} 意志力: ${playerStats[1].will}`;
+    document.getElementById("stats2").textContent = `P2 - 体力: ${playerStats[2].hp} 決定力: ${playerStats[2].power} 意志力: ${playerStats[2].will}`;
+  }
 
   function joinRoom() {
     roomID = document.getElementById("roomInput").value;
@@ -105,6 +117,7 @@
       document.getElementById("playerLabel").textContent = `あなたは プレイヤー${playerNumber}`;
       document.getElementById("game").style.display = "block";
       document.getElementById("status").textContent = "じゃんけんを出してください！";
+      updateStats();
     }
 
     if (data.type === "opponentMove") {
@@ -123,32 +136,46 @@
   }
 
   function judge() {
-    let result = "";
-    const c1 = document.getElementById("character1");
-    const c2 = document.getElementById("character2");
+    const p = playerNumber;
+    const op = p === 1 ? 2 : 1;
 
+    let result = "";
     if (myMove === opponentMove) {
       result = "あいこ！";
+      playerStats[p].power += 1;
+      playerStats[op].power += 1;
     } else {
       const win =
         (myMove === "グー" && opponentMove === "チョキ") ||
         (myMove === "チョキ" && opponentMove === "パー") ||
         (myMove === "パー" && opponentMove === "グー");
 
-      if ((playerNumber === 1 && win) || (playerNumber === 2 && !win)) {
+      if (win) {
         result = "勝ち！";
-        (playerNumber === 1 ? c2 : c1).classList.add("shake");
+        playerStats[p].will += 1;
+        playerStats[op].power += 1;
+        playerStats[op].hp -= 2;
+        document.getElementById("character" + op).classList.add("shake");
       } else {
-        result = "負け…";
-        (playerNumber === 1 ? c1 : c2).classList.add("shake");
+        result = "負け...";
+        playerStats[p].hp -= 2;
+        playerStats[p].power += 1;
+        document.getElementById("character" + p).classList.add("shake");
+        playerStats[op].will += 1;
       }
+    }
+
+    if (playerStats[p].hp <= 0) {
+      result += " あなたの敗北です。";
+    } else if (playerStats[op].hp <= 0) {
+      result += " 相手の敗北です。";
     }
 
     document.getElementById("log").textContent = `あなた: ${myMove} / 相手: ${opponentMove} → ${result}`;
     myMove = null;
     opponentMove = null;
+    updateStats();
 
-    // 揺れ解除
     setTimeout(() => {
       document.getElementById("character1").classList.remove("shake");
       document.getElementById("character2").classList.remove("shake");
