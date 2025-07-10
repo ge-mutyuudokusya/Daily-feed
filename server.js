@@ -3,6 +3,8 @@ const WebSocket = require("ws");
 const wss = new WebSocket.Server({ port: 3000 });
 
 const rooms = {}; // 各ルームの状態
+console.log(`Room ${room}, Player ${ws.playerNumber} played ${data.hand}`);
+console.log('Current moves:', roomData.moves);
 
 wss.on("connection", function connection(ws) {
   ws.on("message", function incoming(message) {
@@ -56,6 +58,7 @@ wss.on("connection", function connection(ws) {
 
   ws.on("close", () => {
     const room = ws.room;
+    
     if (room && rooms[room]) {
       rooms[room].players = rooms[room].players.filter((client) => client !== ws);
     }
