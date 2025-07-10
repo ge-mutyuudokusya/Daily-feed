@@ -65,10 +65,10 @@
   <h2 id="playerLabel"></h2>
 
   <div class="characters">
-    <img id="character1" class="character" src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEiMeLAEhl-RN1MhKnqRh_Z-4faXFsoRU5TB5ykDAiVyKTgI41_bn7GUgYGCT8BUFruiH3UwbUvAaY6eYIopO-kdCEMQJkc3Ls34hpUos9UGlnC4-cSOCAIqHiK79_qi2nCSd9GuoWziiUiU/s1263/job_kantokukan_man.png" />
+  
+ <img id="character1" class="character" src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEiMeLAEhl-RN1MhKnqRh_Z-4faXFsoRU5TB5ykDAiVyKTgI41_bn7GUgYGCT8BUFruiH3UwbUvAaY6eYIopO-kdCEMQJkc3Ls34hpUos9UGlnC4-cSOCAIqHiK79_qi2nCSd9GuoWziiUiU/s1263/job_kantokukan_man.png" />
     <img id="character2" class="character" src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjcihrEXSaDMrepP8ZO0wT1AMUWfhWgD0NmQmgscAsk5oz4D7GBK6ywyVfwATdYv3R7dWpLxKCtRupHnazqjPuvEd0d5HHtn2UhMD80UDZ26lfqFzJJZiskP5LTRgzCfhms13yJbJf3pIxq/s1263/job_kantokukan_woman.png" />
   </div>
-
   <div class="buttons">
     <button onclick="sendMove('グー')">✊ グー</button>
     <button onclick="sendMove('チョキ')">✌ チョキ</button>
@@ -89,8 +89,6 @@
 
   let playerNumber = null;
   let roomID = "";
-  let myMove = null;
-  let opponentMove = null;
 
   const playerStats = {
     1: { hp: 10, power: 0, will: 0, atk: 3 },
@@ -120,66 +118,50 @@
       updateStats();
     }
 
-    if (data.type === "opponentMove") {
-      opponentMove = data.hand;
-      if (myMove) {
-        judge();
-      }
-    }
-  };
+    if (data.type === "result") {
+      const p = playerNumber;
+      const op = p === 1 ? 2 : 1;
 
-  function sendMove(hand) {
-    if (!playerNumber) return;
-    myMove = hand;
-    ws.send(JSON.stringify({ type: "move", room: roomID, hand }));
-    document.getElementById("status").textContent = "相手を待っています...";
-  }
+      let resultText = "";
 
-  function judge() {
-    const p = playerNumber;
-    const op = p === 1 ? 2 : 1;
-
-    let result = "";
-    if (myMove === opponentMove) {
-      result = "あいこ！";
-      playerStats[p].power += 1;
-      playerStats[op].power += 1;
-    } else {
-      const win =
-        (myMove === "グー" && opponentMove === "チョキ") ||
-        (myMove === "チョキ" && opponentMove === "パー") ||
-        (myMove === "パー" && opponentMove === "グー");
-
-      if (win) {
-        result = "勝ち！";
+      if (data.outcome === "draw") {
+        resultText = "あいこ！";
+        playerStats[1].power += 1;
+        playerStats[2].power += 1;
+      } else if (data.outcome === "win") {
+        resultText = "勝ち！";
         playerStats[p].will += 1;
         playerStats[op].power += 1;
         playerStats[op].hp -= 2;
         document.getElementById("character" + op).classList.add("shake");
       } else {
-        result = "負け...";
+        resultText = "負け...";
         playerStats[p].hp -= 2;
         playerStats[p].power += 1;
-        document.getElementById("character" + p).classList.add("shake");
         playerStats[op].will += 1;
+        document.getElementById("character" + p).classList.add("shake");
       }
+
+      if (playerStats[1].hp <= 0) {
+        resultText += " プレイヤー1の敗北。";
+      } else if (playerStats[2].hp <= 0) {
+        resultText += " プレイヤー2の敗北。";
+      }
+
+      document.getElementById("log").textContent = `あなた: ${data.yourMove} / 相手: ${data.opponentMove} → ${resultText}`;
+      updateStats();
+
+      setTimeout(() => {
+        document.getElementById("character1").classList.remove("shake");
+        document.getElementById("character2").classList.remove("shake");
+      }, 500);
     }
+  };
 
-    if (playerStats[p].hp <= 0) {
-      result += " あなたの敗北です。";
-    } else if (playerStats[op].hp <= 0) {
-      result += " 相手の敗北です。";
-    }
-
-    document.getElementById("log").textContent = `あなた: ${myMove} / 相手: ${opponentMove} → ${result}`;
-    myMove = null;
-    opponentMove = null;
-    updateStats();
-
-    setTimeout(() => {
-      document.getElementById("character1").classList.remove("shake");
-      document.getElementById("character2").classList.remove("shake");
-    }, 500);
+  function sendMove(hand) {
+    if (!playerNumber) return;
+    ws.send(JSON.stringify({ type: "move", room: roomID, hand }));
+    document.getElementById("status").textContent = "相手を待っています...";
   }
 </script>
 
